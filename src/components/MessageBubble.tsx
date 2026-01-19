@@ -1,15 +1,40 @@
 'use client';
 
 import { Message } from '@/types';
-import { User, Bot } from 'lucide-react';
+import { User, Bot, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 
 interface MessageBubbleProps {
   message: Message;
+  onGenerateImage?: () => void;
+  isGenerating?: boolean;
 }
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+// マークダウンの太字（**text**）を処理する関数
+function formatContent(content: string): React.ReactNode[] {
+  const parts = content.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      // 太字部分
+      return (
+        <strong key={index} className="font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return part;
+  });
+}
+
+// 画像生成の提案かどうかをチェック
+function hasImageGenerationPrompt(content: string): boolean {
+  return content.includes('完成イメージ画像を作って') ||
+         content.includes('画像を作ってみましょうか');
+}
+
+export default function MessageBubble({ message, onGenerateImage, isGenerating }: MessageBubbleProps) {
   const isUser = message.role === 'user';
+  const showGenerateButton = !isUser && hasImageGenerationPrompt(message.content) && onGenerateImage;
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -38,15 +63,27 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               alt="アップロード画像"
               width={300}
               height={200}
-              className="rounded-lg object-cover"
+              className="w-full max-w-full h-auto rounded-lg object-cover"
             />
           </div>
         )}
 
-        {/* テキスト内容 */}
+        {/* テキスト内容（マークダウン処理済み） */}
         <div className="whitespace-pre-wrap text-sm leading-relaxed">
-          {message.content}
+          {formatContent(message.content)}
         </div>
+
+        {/* 画像生成ボタン */}
+        {showGenerateButton && (
+          <button
+            onClick={onGenerateImage}
+            disabled={isGenerating}
+            className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Wand2 size={18} className={isGenerating ? 'animate-spin' : ''} />
+            {isGenerating ? '生成中...' : '完成イメージを生成する'}
+          </button>
+        )}
 
         {/* AI生成画像 */}
         {message.generatedImageUrl && (
@@ -56,7 +93,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               alt="生成画像"
               width={400}
               height={300}
-              className="rounded-lg object-cover border border-gray-100"
+              className="w-full max-w-full h-auto rounded-lg object-cover border border-gray-100"
             />
           </div>
         )}

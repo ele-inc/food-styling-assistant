@@ -5,10 +5,10 @@ const SESSIONS_KEY = 'food-styling-sessions';
 // セッション一覧を取得
 export function getSessions(): Session[] {
   if (typeof window === 'undefined') return [];
-  
+
   const data = localStorage.getItem(SESSIONS_KEY);
   if (!data) return [];
-  
+
   try {
     const sessions = JSON.parse(data);
     return sessions.map((s: Session) => ({
@@ -28,16 +28,16 @@ export function getSessions(): Session[] {
 // セッションを保存
 export function saveSession(session: Session): void {
   if (typeof window === 'undefined') return;
-  
+
   const sessions = getSessions();
   const existingIndex = sessions.findIndex(s => s.id === session.id);
-  
+
   if (existingIndex >= 0) {
     sessions[existingIndex] = session;
   } else {
     sessions.unshift(session);
   }
-  
+
   localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
 }
 
@@ -50,7 +50,7 @@ export function getSession(id: string): Session | null {
 // セッションを削除
 export function deleteSession(id: string): void {
   if (typeof window === 'undefined') return;
-  
+
   const sessions = getSessions().filter(s => s.id !== id);
   localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
 }
@@ -76,7 +76,7 @@ export function addMessage(session: Session, message: Omit<Message, 'id' | 'time
     id: crypto.randomUUID(),
     timestamp: new Date(),
   };
-  
+
   return {
     ...session,
     messages: [...session.messages, newMessage],
@@ -90,7 +90,7 @@ export function addProduct(session: Session, product: Omit<Product, 'id'>): Sess
     ...product,
     id: crypto.randomUUID(),
   };
-  
+
   return {
     ...session,
     products: [...session.products, newProduct],
@@ -102,7 +102,7 @@ export function addProduct(session: Session, product: Omit<Product, 'id'>): Sess
 export function updateProduct(session: Session, productId: string, updates: Partial<Product>): Session {
   return {
     ...session,
-    products: session.products.map(p => 
+    products: session.products.map(p =>
       p.id === productId ? { ...p, ...updates } : p
     ),
     updatedAt: new Date(),

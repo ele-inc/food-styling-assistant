@@ -4,14 +4,14 @@ import { createGeminiClient, generateChatResponse, generateImage } from '@/lib/g
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, generateImagePrompt } = body;
+    const { messages, generateImagePrompt, mode = 'ohisama' } = body;
 
     const client = await createGeminiClient();
 
     // 画像生成リクエストの場合
     if (generateImagePrompt) {
       const imageBase64 = await generateImage(client, generateImagePrompt);
-      
+
       if (imageBase64) {
         return NextResponse.json({
           success: true,
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await generateChatResponse(client, messages);
+    const response = await generateChatResponse(client, messages, mode);
 
     return NextResponse.json({
       success: true,
@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('API Error:', error);
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+
     if (errorMessage.includes('API_KEY')) {
       return NextResponse.json(
         { error: 'Gemini API キーが設定されていません。.env.local ファイルを確認してください。' },

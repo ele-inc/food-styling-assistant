@@ -1,14 +1,23 @@
 'use client';
 
-import { Session } from '@/types';
 import { History, Trash2, Plus, ChevronRight, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
+// 汎用的なセッション型
+interface SessionLike {
+  id: string;
+  title: string;
+  createdAt: Date;
+  products: Array<{ id: string }>;
+}
+
 interface HistorySidebarProps {
-  sessions: Session[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sessions: any[];
   currentSessionId: string | null;
-  onSelectSession: (session: Session) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSelectSession: (session: any) => void;
   onDeleteSession: (sessionId: string) => void;
   onNewSession: () => void;
   isOpen: boolean;
@@ -38,7 +47,7 @@ export default function HistorySidebar({
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-72 bg-white border-r border-gray-200 
+          w-72 bg-white border-r border-gray-200
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           flex flex-col
@@ -51,7 +60,7 @@ export default function HistorySidebar({
             <h2 className="font-semibold text-gray-800">撮影プラン履歴</h2>
           </div>
           <button
-            onClick={onNewSession}
+            onClick={() => onNewSession()}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium"
           >
             <Plus size={18} />

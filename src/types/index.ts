@@ -49,7 +49,7 @@ export interface AppState {
 }
 
 // フェーズ
-export type Phase = 
+export type Phase =
   | 'waiting'              // 商品待ち
   | 'analyzing'            // 分析中
   | 'proposing'            // 提案表示

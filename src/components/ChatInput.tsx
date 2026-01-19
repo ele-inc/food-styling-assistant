@@ -24,15 +24,19 @@ export default function ChatInput({
     e.preventDefault();
     if ((!message.trim() && !selectedImageBase64) || isLoading) return;
 
-    onSend(
-      message.trim() || '商品の分析をお願いします',
-      selectedImageBase64 || undefined,
-      selectedImageUrl || undefined
-    );
+    // 送信前に値を保存してからクリア
+    const messageToSend = message.trim() || '商品の分析をお願いします';
+    const imageBase64ToSend = selectedImageBase64;
+    const imageUrlToSend = selectedImageUrl;
+
+    // 即座にクリア
     setMessage('');
     setSelectedImageBase64(null);
     setSelectedImageUrl(null);
     setShowImageUpload(false);
+
+    // 送信
+    onSend(messageToSend, imageBase64ToSend || undefined, imageUrlToSend || undefined);
   };
 
   const handleImageSelect = (base64: string, url: string) => {
@@ -100,9 +104,15 @@ export default function ChatInput({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
+              // IME入力中（日本語変換中）は何もしない
+              if (e.nativeEvent.isComposing) return;
+
+              // Enterキーで送信（Shift+Enterは改行）
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                handleSubmit(e);
+                if ((message.trim() || selectedImageBase64) && !isLoading) {
+                  handleSubmit(e);
+                }
               }
             }}
             placeholder={placeholder}

@@ -1,28 +1,35 @@
 'use client';
 
 import { Proposal } from '@/types';
-import { Sparkles, UtensilsCrossed, Package } from 'lucide-react';
+import { Sparkles, UtensilsCrossed, Package, Check } from 'lucide-react';
 
 interface ProposalCardProps {
   proposal: Proposal;
   onSelect: (proposal: Proposal) => void;
   isSelected?: boolean;
+  isDisabled?: boolean; // 他の案が選択済みの場合
 }
 
 export default function ProposalCard({
   proposal,
   onSelect,
   isSelected = false,
+  isDisabled = false,
 }: ProposalCardProps) {
+  const isClickable = !isSelected && !isDisabled;
+
   return (
     <button
-      onClick={() => onSelect(proposal)}
+      onClick={() => isClickable && onSelect(proposal)}
+      disabled={!isClickable}
       className={`
         w-full text-left p-4 rounded-xl border-2 transition-all
         ${
           isSelected
             ? 'border-primary-500 bg-primary-50 shadow-md'
-            : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+            : isDisabled
+            ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
+            : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50 cursor-pointer'
         }
       `}
     >
@@ -34,34 +41,38 @@ export default function ProposalCard({
             ${
               isSelected
                 ? 'bg-primary-500 text-white'
+                : isDisabled
+                ? 'bg-gray-300 text-gray-500'
                 : 'bg-gray-200 text-gray-700'
             }
           `}
         >
-          {proposal.id}
+          {isSelected ? <Check size={16} /> : proposal.id}
         </span>
-        <h3 className="font-semibold text-gray-800">{proposal.title}</h3>
+        <h3 className={`font-semibold ${isDisabled && !isSelected ? 'text-gray-500' : 'text-gray-800'}`}>
+          {proposal.title}
+        </h3>
       </div>
 
       {/* 説明 */}
-      <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+      <p className={`text-sm mb-3 leading-relaxed ${isDisabled && !isSelected ? 'text-gray-400' : 'text-gray-600'}`}>
         {proposal.description}
       </p>
 
       {/* 詳細情報 */}
       <div className="space-y-2">
         <div className="flex items-start gap-2">
-          <UtensilsCrossed size={16} className="text-primary-500 mt-0.5 flex-shrink-0" />
+          <UtensilsCrossed size={16} className={`mt-0.5 flex-shrink-0 ${isDisabled && !isSelected ? 'text-gray-400' : 'text-primary-500'}`} />
           <div>
             <span className="text-xs text-gray-500 block">メニュー・材料</span>
-            <span className="text-sm text-gray-700">{proposal.menuMaterial}</span>
+            <span className={`text-sm ${isDisabled && !isSelected ? 'text-gray-400' : 'text-gray-700'}`}>{proposal.menuMaterial}</span>
           </div>
         </div>
         <div className="flex items-start gap-2">
-          <Package size={16} className="text-accent-500 mt-0.5 flex-shrink-0" />
+          <Package size={16} className={`mt-0.5 flex-shrink-0 ${isDisabled && !isSelected ? 'text-gray-400' : 'text-accent-500'}`} />
           <div>
             <span className="text-xs text-gray-500 block">資材</span>
-            <span className="text-sm text-gray-700">{proposal.equipment}</span>
+            <span className={`text-sm ${isDisabled && !isSelected ? 'text-gray-400' : 'text-gray-700'}`}>{proposal.equipment}</span>
           </div>
         </div>
       </div>
@@ -70,7 +81,7 @@ export default function ProposalCard({
       {isSelected && (
         <div className="mt-3 flex items-center gap-1 text-primary-600 text-sm font-medium">
           <Sparkles size={14} />
-          この案を選択中
+          この案で決定
         </div>
       )}
     </button>

@@ -19,26 +19,26 @@ interface SummaryTableProps {
 export default function SummaryTable({ data }: SummaryTableProps) {
   const handleCopyToClipboard = () => {
     let text = '📋 今週の撮影プランまとめ\n\n';
-    
+
     // テーブル
     text += '| 商品名 | メニュー・材料メモ | 資材（お皿・小物） |\n';
     text += '| :--- | :--- | :--- |\n';
     data.table.forEach(row => {
       text += `| ${row.productName} | ${row.menuMaterial} | ${row.equipment} |\n`;
     });
-    
+
     // 買い物リスト
     text += '\n🛒 買い物リスト（トッピング・生鮮のみ）\n';
     data.shoppingList.forEach(item => {
       text += `- [ ] ${item}\n`;
     });
-    
+
     // 用意するもの
     text += '\n🏠 用意するもの（機材・資材）\n';
     data.equipmentList.forEach(item => {
       text += `- [ ] ${item}\n`;
     });
-    
+
     navigator.clipboard.writeText(text);
     alert('クリップボードにコピーしました！');
   };
