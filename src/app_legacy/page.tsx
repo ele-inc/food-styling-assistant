@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Menu, Camera, Sparkles, LogOut, Newspaper, BookOpen } from 'lucide-react';
+import { Menu, Sparkles, LogOut, Newspaper, BookOpen } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 import { Message, Proposal } from '@/types';
 import {
@@ -24,6 +24,8 @@ import RecipeCard from '@/components/RecipeCard';
 import ImageConfirmation, { RevisionRequest } from '@/components/ImageConfirmation';
 import EquipmentList, { EquipmentItem } from '@/components/EquipmentList';
 import ProposalConfirmation from '@/components/ProposalConfirmation';
+import DishSelector, { DishOption } from '@/components/DishSelector';
+import LayoutPreview from '@/components/LayoutPreview';
 
 interface ParsedSummary {
   theme?: string;
@@ -158,6 +160,13 @@ export default function Home() {
   const [showProposalConfirmation, setShowProposalConfirmation] = useState(false);
   const [awaitingModificationInput, setAwaitingModificationInput] = useState(false);
   const [autoGenerateAfterPrompt, setAutoGenerateAfterPrompt] = useState(false);
+  // コープレター用の状態
+  const [dishOptions, setDishOptions] = useState<DishOption[]>([]);
+  const [selectedDishes, setSelectedDishes] = useState<Array<{ order: number; id: string; name: string }>>([]);
+  const [currentDishIndex, setCurrentDishIndex] = useState<number>(0);
+  const [dishImages, setDishImages] = useState<Array<{ order: number; name: string; imageUrl: string }>>([]);
+  const [layoutImageUrl, setLayoutImageUrl] = useState<string | null>(null);
+  const [isGeneratingLayout, setIsGeneratingLayout] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const proposalsRef = useRef<HTMLDivElement>(null);
 
@@ -262,6 +271,13 @@ export default function Home() {
     setAwaitingModificationInput(false);
     setPendingImagePrompt(null);
     setAutoGenerateAfterPrompt(false);
+    // コープレター用の状態リセット
+    setDishOptions([]);
+    setSelectedDishes([]);
+    setCurrentDishIndex(0);
+    setDishImages([]);
+    setLayoutImageUrl(null);
+    setIsGeneratingLayout(false);
     setSidebarOpen(false);
 
     try {
@@ -302,6 +318,12 @@ export default function Home() {
     setSelectedProposal(null);
     setSummary(null);
     setRecipes([]);
+    // コープレター用の状態リセット
+    setDishOptions([]);
+    setSelectedDishes([]);
+    setCurrentDishIndex(0);
+    setDishImages([]);
+    setLayoutImageUrl(null);
     setSidebarOpen(false);
   };
 
@@ -335,7 +357,62 @@ export default function Home() {
     const findLooseJsonMatch = (keyword: string) =>
       response.match(new RegExp(`\\{[\\s\\S]*?"${keyword}"[\\s\\S]*?\\}`, 'm'));
 
-    // 提案の解析
+    // コープレター：料理選択リストの解析
+    const dishSelectionMatch =
+      response.match(/```json\s*\n?\{[\s\S]*?"action"\s*:\s*"dish_selection"[\s\S]*?\}\s*\n?```/);
+    if (dishSelectionMatch) {
+      try {
+        const jsonStr = extractJsonPayload(dishSelectionMatch);
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.action === 'dish_selection' && parsed.dishList) {
+          setDishOptions(parsed.dishList);
+          // テーマをセッションタイトルに設定
+          if (parsed.theme && currentSession) {
+            updateSessionTitle(parsed.theme);
+          }
+          return response.replace(dishSelectionMatch[0], '').trim();
+        }
+      } catch (e) {
+        console.error('Failed to parse dish selection:', e);
+      }
+    }
+
+    // コープレター：3品選択確定の解析
+    const dishesConfirmedMatch =
+      response.match(/```json\s*\n?\{[\s\S]*?"action"\s*:\s*"dishes_confirmed"[\s\S]*?\}\s*\n?```/);
+    if (dishesConfirmedMatch) {
+      try {
+        const jsonStr = extractJsonPayload(dishesConfirmedMatch);
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.action === 'dishes_confirmed' && parsed.selectedDishes) {
+          setSelectedDishes(parsed.selectedDishes);
+          setCurrentDishIndex(0);
+          setDishOptions([]); // 選択UIを非表示に
+          return response.replace(dishesConfirmedMatch[0], '').trim();
+        }
+      } catch (e) {
+        console.error('Failed to parse dishes confirmed:', e);
+      }
+    }
+
+    // コープレター：最終レイアウト画像生成の解析
+    const layoutMatch =
+      response.match(/```json\s*\n?\{[\s\S]*?"action"\s*:\s*"generate_layout"[\s\S]*?\}\s*\n?```/);
+    if (layoutMatch) {
+      try {
+        const jsonStr = extractJsonPayload(layoutMatch);
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.action === 'generate_layout' && parsed.prompt) {
+          // 自動的にレイアウト画像を生成
+          handleGenerateLayoutImage(parsed.prompt);
+          return response.replace(layoutMatch[0], '').trim();
+        }
+      } catch (e) {
+        console.error('Failed to parse layout action:', e);
+      }
+    }
+
+    // 提案の解析（おひさま通信用）
     const proposalMatch =
       response.match(/```json\s*\n?\{[\s\S]*?"proposals"[\s\S]*?\}\s*\n?```/) ||
       findLooseJsonMatch('proposals');
@@ -358,6 +435,12 @@ export default function Home() {
             equipment: p.equipment,
           }));
           setProposals(formattedProposals);
+
+          // コープレターの場合、テーマがあればそれをセッションタイトルに使用
+          if (parsed.theme && currentSession && currentSession.title.includes('コープレター')) {
+            updateSessionTitle(parsed.theme);
+          }
+
           return response.replace(proposalMatch[0], '').trim();
         }
       } catch (e) {
@@ -468,13 +551,6 @@ export default function Home() {
     });
     await updateSession(updatedSession);
 
-    // 最初のユーザーメッセージの場合、セッションタイトルを商品名に更新
-    if (currentSession.messages.length === 0 && content.trim()) {
-      // 商品名として使用（最初の20文字まで）
-      const productName = content.trim().slice(0, 20) + (content.trim().length > 20 ? '...' : '');
-      await updateSessionTitle(productName);
-    }
-
     setIsLoading(true);
     // 提案リストはクリアしない（グレーアウトで残す）
     // setProposals([]);
@@ -544,6 +620,12 @@ export default function Home() {
   const handleProposalGenerateRequest = async () => {
     if (!selectedProposal || !currentSession) return;
     setAutoGenerateAfterPrompt(true);
+
+    // おひさま通信の場合、選択した提案のタイトルをセッションタイトルに設定
+    if (selectedMode === 'ohisama') {
+      await updateSessionTitle(selectedProposal.title);
+    }
+
     // AIに確定を伝えて画像生成プロンプトを取得
     await handleSendMessage(`案${selectedProposal.id}（${selectedProposal.title}）でお願いします。このままで大丈夫です。`);
   };
@@ -606,6 +688,95 @@ export default function Home() {
     } finally {
       setIsGeneratingImage(false);
     }
+  };
+
+  // コープレター：3品選択時の処理
+  const handleDishSelection = async (selectedIds: string[]) => {
+    if (!currentSession) return;
+
+    // 選択した料理名を取得
+    const selectedDishNames = selectedIds.map((id, index) => {
+      const dish = dishOptions.find((d) => d.id === id);
+      return { order: index + 1, id, name: dish?.name || '' };
+    });
+
+    // メッセージを送信
+    const message = `${selectedIds.join(', ')} を選びます`;
+    await handleSendMessage(message);
+  };
+
+  // コープレター：各料理の画像生成後の処理
+  const handleDishImageGenerated = (imageUrl: string) => {
+    if (selectedDishes.length === 0 || currentDishIndex >= selectedDishes.length) return;
+
+    const currentDish = selectedDishes[currentDishIndex];
+    setDishImages((prev) => [
+      ...prev,
+      { order: currentDish.order, name: currentDish.name, imageUrl },
+    ]);
+  };
+
+  // コープレター：次の料理へ進む
+  const handleNextDish = async () => {
+    if (!currentSession) return;
+
+    if (currentDishIndex < selectedDishes.length - 1) {
+      setCurrentDishIndex((prev) => prev + 1);
+      await handleSendMessage('OKです、次の料理に進んでください');
+    } else {
+      // 全ての料理が完成、レイアウト生成へ
+      await handleSendMessage('OKです、最終レイアウトを生成してください');
+    }
+  };
+
+  // コープレター：レイアウト画像生成
+  const handleGenerateLayoutImage = async (prompt: string) => {
+    if (!currentSession) return;
+
+    setIsGeneratingLayout(true);
+
+    try {
+      const imageResponse = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generateImagePrompt: prompt }),
+      });
+
+      const imageData = await imageResponse.json();
+
+      if (imageData.success && imageData.imageBase64) {
+        const generatedImageUrl = `data:image/png;base64,${imageData.imageBase64}`;
+        setLayoutImageUrl(generatedImageUrl);
+
+        const updatedSession = addMessage(currentSession, {
+          role: 'assistant',
+          content: '表紙レイアウトのイメージが完成しました！',
+          generatedImageUrl,
+        });
+        await updateSession(updatedSession);
+      } else {
+        const updatedSession = addMessage(currentSession, {
+          role: 'assistant',
+          content: 'レイアウト画像の生成に失敗しました。もう一度お試しください。',
+        });
+        await updateSession(updatedSession);
+      }
+    } catch (error) {
+      console.error('Layout image generation error:', error);
+      const updatedSession = addMessage(currentSession, {
+        role: 'assistant',
+        content: 'レイアウト画像の生成中にエラーが発生しました。',
+      });
+      await updateSession(updatedSession);
+    } finally {
+      setIsGeneratingLayout(false);
+    }
+  };
+
+  // コープレター：レイアウト確定
+  const handleLayoutConfirm = async () => {
+    if (!currentSession) return;
+    await handleSendMessage('このレイアウトでOKです。まとめを出してください。');
   };
 
   // 画像確認OK
@@ -857,6 +1028,43 @@ export default function Home() {
             </div>
           )}
 
+          {/* コープレター：料理選択UI */}
+          {dishOptions.length > 0 && selectedMode === 'coop_letter' && (
+            <div className="animate-fade-in">
+              <DishSelector
+                dishes={dishOptions}
+                onSelect={handleDishSelection}
+                maxSelection={3}
+              />
+            </div>
+          )}
+
+          {/* コープレター：選択した3品の進捗表示 */}
+          {selectedDishes.length > 0 && selectedMode === 'coop_letter' && (
+            <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+              <p className="text-sm text-emerald-700 font-medium mb-2">選択した3品</p>
+              <div className="flex gap-2">
+                {selectedDishes.map((dish, index) => (
+                  <div
+                    key={dish.id}
+                    className={`flex-1 text-center py-2 px-3 rounded-lg text-sm ${
+                      index < currentDishIndex
+                        ? 'bg-emerald-500 text-white'
+                        : index === currentDishIndex
+                          ? 'bg-emerald-200 text-emerald-800 font-medium'
+                          : 'bg-white text-gray-500 border border-gray-200'
+                    }`}
+                  >
+                    <span className="text-xs">{dish.order}品目</span>
+                    <br />
+                    {dish.name}
+                    {index < currentDishIndex && ' ✓'}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 画像確認UI（おひさま通信用） */}
           {showImageConfirmation && lastGeneratedImageUrl && selectedMode === 'ohisama' && (
             <div className="animate-fade-in">
@@ -885,6 +1093,18 @@ export default function Home() {
               <RecipeCard recipe={recipe} />
             </div>
           ))}
+
+          {/* コープレター：最終レイアウトプレビュー */}
+          {layoutImageUrl && selectedMode === 'coop_letter' && (
+            <div className="animate-fade-in">
+              <LayoutPreview
+                dishImages={dishImages}
+                layoutImageUrl={layoutImageUrl}
+                onConfirm={handleLayoutConfirm}
+                isLoading={isGeneratingLayout}
+              />
+            </div>
+          )}
 
           {/* まとめテーブル */}
           {summary && (
