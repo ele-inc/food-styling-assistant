@@ -21,7 +21,7 @@ export async function generateChatResponse(
 	const systemPrompt = getPromptByMode(mode);
 
 	const model = client.getGenerativeModel({
-		model: "gemini-2.0-flash",
+		model: "gemini-3-pro-preview",
 		systemInstruction: systemPrompt,
 	});
 
@@ -56,7 +56,7 @@ export async function generateImage(
 	try {
 		// Gemini 2.0 Flash の画像生成機能を使用（Imagen 3ベース）
 		const model = client.getGenerativeModel({
-			model: "gemini-2.0-flash-exp",
+			model: "gemini-3-pro-image-preview",
 		});
 
 		const imagePrompt = `Create a professional food photography image: ${prompt}
