@@ -1,46 +1,8 @@
+"use server";
+
 import { desc, eq } from "drizzle-orm";
 import { type AppSession, appSessions, db, type NewAppSession } from "@/db";
-
-// Type definitions for frontend use
-export interface DbSession {
-	id: string;
-	user_id: string;
-	title: string;
-	mode: "ohisama" | "coop_letter";
-	theme?: string | null;
-	products: DbProduct[];
-	messages: DbMessage[];
-	is_completed: boolean;
-	created_at: string;
-	updated_at: string;
-}
-
-export interface DbProduct {
-	id: string;
-	name: string;
-	image_url?: string;
-	shape: string;
-	selected_proposal?: DbProposal;
-	generated_image_url?: string;
-	recipe?: string;
-}
-
-export interface DbProposal {
-	id: string;
-	title: string;
-	description: string;
-	menu_material: string;
-	equipment: string;
-}
-
-export interface DbMessage {
-	id: string;
-	role: "user" | "assistant";
-	content: string;
-	image_url?: string;
-	generated_image_url?: string;
-	timestamp: string;
-}
+import type { DbSession } from "./db-types";
 
 // Convert DB row to DbSession format
 function toDbSession(row: AppSession): DbSession {
@@ -50,8 +12,8 @@ function toDbSession(row: AppSession): DbSession {
 		title: row.title,
 		mode: row.mode,
 		theme: row.theme,
-		products: row.products as DbProduct[],
-		messages: row.messages as DbMessage[],
+		products: row.products as DbSession["products"],
+		messages: row.messages as DbSession["messages"],
 		is_completed: row.isCompleted,
 		created_at: row.createdAt.toISOString(),
 		updated_at: row.updatedAt.toISOString(),
