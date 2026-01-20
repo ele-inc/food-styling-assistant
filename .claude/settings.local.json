@@ -9,7 +9,9 @@
       "Bash(pnpm exec next lint:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nchore: modernize stack with latest dependencies\n\n- Migrate from npm to pnpm\n- Update Next.js 14 → 16, React 18 → 19\n- Update Tailwind CSS 3 → 4 with new PostCSS config\n- Replace ESLint with Biome for faster linting\n- Remove deprecated @supabase/auth-helpers-nextjs\n- Convert config files to ESM \\(.mjs\\)\n- Apply Biome formatting across codebase\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nchore: modernize stack with latest dependencies\n\n- Migrate from npm to pnpm\n- Update Next.js 14 → 16, React 18 → 19\n- Update Tailwind CSS 3 → 4 with new PostCSS config\n- Replace ESLint with Biome for faster linting\n- Remove deprecated @supabase/auth-helpers-nextjs\n- Convert config files to ESM \\(.mjs\\)\n- Apply Biome formatting across codebase\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(pnpm lint:fix:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: migrate from Supabase to Neon + NextAuth\n\n- Replace Supabase Auth with NextAuth.js \\(Credentials provider\\)\n- Replace Supabase database with Neon \\(Vercel Postgres\\)\n- Add Drizzle ORM for type-safe database operations\n- Create database schema for users and app sessions\n- Update sign-in page for email/password authentication\n- Migrate from Pages Router to App Router completely\n- Remove Supabase dependencies\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

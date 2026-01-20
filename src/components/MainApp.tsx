@@ -1,9 +1,9 @@
 "use client";
 
-import type { User } from "@supabase/supabase-js";
 import { BookOpen, LogOut, Menu, Newspaper, Sparkles } from "lucide-react";
+import type { User } from "next-auth";
+import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import AuthForm from "@/components/AuthForm";
 import ChatInput from "@/components/ChatInput";
 import DishSelector, { type DishOption } from "@/components/DishSelector";
 import EquipmentList, { type EquipmentItem } from "@/components/EquipmentList";
@@ -22,12 +22,13 @@ import {
 	type DbSession,
 	deleteSessionFromDb,
 	fetchSessions,
-	getCurrentUser,
 	saveSessionToDb,
-	signOut,
-	supabase,
-} from "@/lib/supabase";
+} from "@/lib/db";
 import type { Message, Proposal } from "@/types";
+
+interface MainAppProps {
+	user: User;
+}
 
 interface ParsedSummary {
 	theme?: string;
@@ -75,7 +76,7 @@ function convertDbSessionToSession(dbSession: DbSession): Session {
 		id: dbSession.id,
 		title: dbSession.title,
 		mode: dbSession.mode,
-		theme: dbSession.theme,
+		theme: dbSession.theme ?? undefined,
 		products: dbSession.products.map((p) => ({
 			id: p.id,
 			name: p.name,
@@ -148,9 +149,7 @@ function convertSessionToDbSession(
 	};
 }
 
-export default function Home() {
-	const [user, setUser] = useState<User | null>(null);
-	const [isAuthLoading, setIsAuthLoading] = useState(true);
+export function MainApp({ user }: MainAppProps) {
 	const [selectedMode, setSelectedMode] = useState<WorkMode | null>(null);
 
 	const [sessions, setSessions] = useState<Session[]>([]);
@@ -191,25 +190,9 @@ export default function Home() {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const proposalsRef = useRef<HTMLDivElement>(null);
 
-	// 認証状態の監視
-	useEffect(() => {
-		getCurrentUser().then((u) => {
-			setUser(u);
-			setIsAuthLoading(false);
-		});
-
-		const {
-			data: { subscription },
-		} = supabase.auth.onAuthStateChange((_event, session) => {
-			setUser(session?.user ?? null);
-		});
-
-		return () => subscription.unsubscribe();
-	}, []);
-
 	// セッション読み込み
 	useEffect(() => {
-		if (user && selectedMode) {
+		if (user.id && selectedMode) {
 			fetchSessions(user.id).then((dbSessions) => {
 				const filteredSessions = dbSessions
 					.filter((s) => s.mode === selectedMode)
@@ -223,7 +206,7 @@ export default function Home() {
 				}
 			});
 		}
-	}, [user, selectedMode]);
+	}, [user.id, selectedMode]);
 
 	// メッセージ末尾へスクロール
 	useEffect(() => {
@@ -250,7 +233,7 @@ export default function Home() {
 	// セッションの保存
 	const updateSession = useCallback(
 		async (session: Session) => {
-			if (!user) return;
+			if (!user.id) return;
 
 			setCurrentSession(session);
 			setSessions((prev) =>
@@ -264,13 +247,13 @@ export default function Home() {
 				console.error("Failed to save session:", error);
 			}
 		},
-		[user],
+		[user.id],
 	);
 
 	// 新しいセッションを作成
 	const handleNewSession = useCallback(
 		async (productName?: string) => {
-			if (!user || !selectedMode) return;
+			if (!user.id || !selectedMode) return;
 
 			const now = new Date();
 			const modeLabel =
@@ -321,13 +304,13 @@ export default function Home() {
 
 			return newSession;
 		},
-		[user, selectedMode],
+		[user.id, selectedMode],
 	);
 
 	// セッションタイトルを更新
 	const updateSessionTitle = useCallback(
 		async (title: string) => {
-			if (!currentSession || !user) return;
+			if (!currentSession || !user.id) return;
 
 			const updatedSession = {
 				...currentSession,
@@ -348,7 +331,7 @@ export default function Home() {
 				console.error("Failed to update session title:", error);
 			}
 		},
-		[currentSession, user],
+		[currentSession, user.id],
 	);
 
 	// セッションを選択
@@ -754,30 +737,9 @@ export default function Home() {
 	const handleDishSelection = async (selectedIds: string[]) => {
 		if (!currentSession) return;
 
-		// 選択した料理名を取得
-		const selectedDishNames = selectedIds.map((id, index) => {
-			const dish = dishOptions.find((d) => d.id === id);
-			return { order: index + 1, id, name: dish?.name || "" };
-		});
-
 		// メッセージを送信
 		const message = `${selectedIds.join(", ")} を選びます`;
 		await handleSendMessage(message);
-	};
-
-	// コープレター：各料理の画像生成後の処理
-	const handleDishImageGenerated = (imageUrl: string) => {
-		if (
-			selectedDishes.length === 0 ||
-			currentDishIndex >= selectedDishes.length
-		)
-			return;
-
-		const currentDish = selectedDishes[currentDishIndex];
-		setDishImages((prev) => [
-			...prev,
-			{ order: currentDish.order, name: currentDish.name, imageUrl },
-		]);
 	};
 
 	// コープレター：次の料理へ進む
@@ -876,7 +838,7 @@ export default function Home() {
 	// 次の商品へ進む（新しいチャットを作成）
 	const handleProceedToNext = async () => {
 		// 現在のセッションを完了としてマーク
-		if (currentSession && user) {
+		if (currentSession && user.id) {
 			const completedSession = {
 				...currentSession,
 				isCompleted: true,
@@ -902,11 +864,7 @@ export default function Home() {
 
 	// ログアウト
 	const handleSignOut = async () => {
-		await signOut();
-		setUser(null);
-		setSelectedMode(null);
-		setSessions([]);
-		setCurrentSession(null);
+		await signOut({ callbackUrl: "/auth/signin" });
 	};
 
 	// モード選択に戻る
@@ -919,26 +877,13 @@ export default function Home() {
 		setRecipes([]);
 	};
 
-	// 認証チェック中
-	if (isAuthLoading) {
-		return (
-			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
-				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-			</div>
-		);
-	}
-
-	// 未ログイン
-	if (!user) {
-		return <AuthForm onSuccess={() => {}} />;
-	}
-
 	// モード未選択
 	if (!selectedMode) {
 		return (
 			<div className="relative">
 				<ModeSelector onSelectMode={setSelectedMode} />
 				<button
+					type="button"
 					onClick={handleSignOut}
 					className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-lg transition-colors"
 				>
@@ -969,6 +914,7 @@ export default function Home() {
 				<header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						<button
+							type="button"
 							onClick={() => setSidebarOpen(!sidebarOpen)}
 							className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
 						>
@@ -1001,12 +947,14 @@ export default function Home() {
 
 					<div className="flex items-center gap-2">
 						<button
+							type="button"
 							onClick={handleBackToModeSelect}
 							className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
 						>
 							モード変更
 						</button>
 						<button
+							type="button"
 							onClick={handleSignOut}
 							className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
 						>
@@ -1175,7 +1123,7 @@ export default function Home() {
 
 					{/* レシピカード（コープレター用） */}
 					{recipes.map((recipe, index) => (
-						<div key={index} className="animate-fade-in">
+						<div key={`recipe-${index}`} className="animate-fade-in">
 							<RecipeCard recipe={recipe} />
 						</div>
 					))}
