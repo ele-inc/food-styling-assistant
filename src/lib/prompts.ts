@@ -285,6 +285,6 @@ export const COOP_LETTER_PROMPT = `あなたは、フードスタイリストの
 - **テーマ食材が画像で明確に見えることを最優先**にしてください
 - 親しみやすく、プロフェッショナルな口調で対応してください`;
 
-export function getPromptByMode(mode: 'ohisama' | 'coop_letter'): string {
-  return mode === 'ohisama' ? OHISAMA_PROMPT : COOP_LETTER_PROMPT;
+export function getPromptByMode(mode: "ohisama" | "coop_letter"): string {
+	return mode === "ohisama" ? OHISAMA_PROMPT : COOP_LETTER_PROMPT;
 }

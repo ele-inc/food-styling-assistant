@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm update:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm next lint:*)",
+      "Bash(pnpm exec next lint:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nchore: modernize stack with latest dependencies\n\n- Migrate from npm to pnpm\n- Update Next.js 14 → 16, React 18 → 19\n- Update Tailwind CSS 3 → 4 with new PostCSS config\n- Replace ESLint with Biome for faster linting\n- Remove deprecated @supabase/auth-helpers-nextjs\n- Convert config files to ESM \\(.mjs\\)\n- Apply Biome formatting across codebase\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
