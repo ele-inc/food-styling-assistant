@@ -127,7 +127,3 @@ Vercel の「Settings」→「Environment Variables」で以下を追加：
 - **認証**: NextAuth.js v5
 - **DB**: Neon (Serverless Postgres) + Drizzle ORM
 - **ホスティング**: Vercel
-
-## ライセンス
-
-Private - All rights reserved
