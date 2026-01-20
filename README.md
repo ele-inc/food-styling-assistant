@@ -29,53 +29,33 @@
 
 ## セットアップ
 
-### 1. Supabase プロジェクトの作成
+### 1. 環境変数の設定
 
-1. https://supabase.com にアクセスしてアカウント作成
-2. 「New Project」をクリック
-3. プロジェクト名を入力（例: food-styling-assistant）
-4. パスワードを設定
-5. リージョンを選択（Tokyo推奨）
-6. 「Create new project」をクリック
-
-### 2. データベーステーブルの作成
-
-1. Supabase Dashboard の「SQL Editor」を開く
-2. `supabase-setup.sql` の内容をコピー＆ペースト
-3. 「Run」をクリックして実行
-
-### 3. Supabase の認証設定
-
-1. Dashboard の「Authentication」→「Providers」
-2. 「Email」が有効になっていることを確認
-3. （オプション）「Confirm email」をオフにすると、メール確認なしでログイン可能
-
-### 4. API キーの取得
-
-**Supabase:**
-1. Dashboard の「Settings」→「API」
-2. 「Project URL」をコピー → `NEXT_PUBLIC_SUPABASE_URL`
-3. 「anon public」キーをコピー → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-**Gemini:**
-1. https://aistudio.google.com/app/apikey にアクセス
-2. 「APIキーを作成」をクリック
-3. キーをコピー → `GEMINI_API_KEY`
-
-### 5. 環境変数の設定
-
-プロジェクトルートに `.env.local` ファイルを作成：
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-GEMINI_API_KEY=AIzaSy...
-```
-
-### 6. 依存関係のインストールと起動
+`.env.local.example` をコピーして `.env.local` を作成：
 
 ```bash
-cd food-styling-assistant
+cp .env.local.example .env.local
+```
+
+各環境変数を設定します：
+
+| 変数名 | 説明 | 取得方法 |
+|--------|------|----------|
+| `DATABASE_URL` | Neon PostgreSQL接続文字列 | [Neon Console](https://console.neon.tech) でプロジェクト作成後、Connection Stringをコピー |
+| `AUTH_SECRET` | NextAuth.js用シークレット | `openssl rand -base64 32` で生成 |
+| `GEMINI_API_KEY` | Gemini API キー | [Google AI Studio](https://aistudio.google.com/app/apikey) で作成 |
+
+### 2. データベースのセットアップ
+
+[Neon](https://neon.tech) でプロジェクトを作成し、スキーマを適用：
+
+```bash
+npx drizzle-kit push
+```
+
+### 3. 依存関係のインストールと起動
+
+```bash
 npm install
 npm run dev
 ```
@@ -89,11 +69,9 @@ http://localhost:3000 でアプリが起動します。
 ### 1. GitHubにプッシュ
 
 ```bash
-git init
 git add .
 git commit -m "Initial commit"
-git remote add origin https://github.com/your-username/food-styling-assistant.git
-git push -u origin main
+git push
 ```
 
 ### 2. Vercel でインポート
@@ -106,9 +84,9 @@ git push -u origin main
 
 Vercel の「Settings」→「Environment Variables」で以下を追加：
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `GEMINI_API_KEY`
+- `DATABASE_URL` - Neonの接続文字列
+- `AUTH_SECRET` - `openssl rand -base64 32` で生成した値
+- `GEMINI_API_KEY` - Google AI StudioのAPIキー
 
 ### 4. デプロイ
 
@@ -119,9 +97,8 @@ Vercel の「Settings」→「Environment Variables」で以下を追加：
 ## 使い方
 
 ### 初回利用
-1. ログイン画面で「新規登録」タブを選択
-2. メールアドレスとパスワードを入力
-3. 「登録する」をクリック
+1. ログイン画面でメールアドレスとパスワードを入力
+2. 初回ログイン時は自動的にアカウントが作成されます
 
 ### おひさま通信の流れ
 1. モード選択で「おひさま通信」を選択
@@ -143,11 +120,12 @@ Vercel の「Settings」→「Environment Variables」で以下を追加：
 
 ## 技術スタック
 
-- **フレームワーク**: Next.js 14 (App Router)
+- **フレームワーク**: Next.js 15 (App Router)
 - **言語**: TypeScript
 - **スタイリング**: Tailwind CSS
 - **AI**: Gemini 2.0 Flash (テキスト生成 + 画像生成)
-- **認証・DB**: Supabase
+- **認証**: NextAuth.js v5
+- **DB**: Neon (Serverless Postgres) + Drizzle ORM
 - **ホスティング**: Vercel
 
 ## ライセンス
