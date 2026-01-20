@@ -18,8 +18,8 @@ import ProposalCard from "@/components/ProposalCard";
 import ProposalConfirmation from "@/components/ProposalConfirmation";
 import RecipeCard from "@/components/RecipeCard";
 import SummaryTable from "@/components/SummaryTable";
+import type { DbSession } from "@/lib/db-types";
 import {
-	type DbSession,
 	deleteSessionFromDb,
 	fetchSessions,
 	saveSessionToDb,
